@@ -1,0 +1,261 @@
+
+/* Hero Section */
+
+.hero-slider {
+    position: relative;
+    width: 100%;
+    overflow: hidden;
+}
+
+/* School Finder */
+
+.mcb-school-finder {
+    position: absolute;
+    bottom: 100px;
+    left: 3.4%;
+    width: 93.2%;
+    padding: 18px 20px 19px;
+    box-sizing: border-box;
+    z-index: 20;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.20);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+.mcb-finder-title {
+    color: #fff;
+    font-size: 22px;
+    font-weight: 700;
+    margin: 0 0 13px;
+    text-align: center;
+}
+
+/* Finder Form */
+
+.mcb-finder-form {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 0.95fr;
+    width: 100%;
+    min-height: 60px;
+    background: #fff;
+    border-radius: 11px;
+    position: relative;
+    overflow: visible;
+}
+
+.mcb-finder-field {
+    position: relative;
+    min-width: 0;
+    border-right: 1px solid #ddd;
+}
+
+/* Custom Dropdown */
+
+.mcb-dropdown {
+    position: relative;
+    width: 100%;
+    min-width: 0;
+}
+
+.mcb-dropdown-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    height: 60px;
+    padding: 0 15px;
+    border: none;
+    outline: none;
+    background: #fff;
+    color: #333;
+    font-size: 13px;
+    cursor: pointer;
+    box-sizing: border-box;
+    border-radius: 0;
+}
+
+.mcb-dropdown-toggle span:first-child {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.mcb-dropdown-toggle:disabled {
+    background: #f2f2f2;
+    color: #999;
+    cursor: not-allowed;
+}
+
+.mcb-dropdown-arrow {
+    width: 7px;
+    height: 7px;
+    border-right: 1.5px solid #333;
+    border-bottom: 1.5px solid #333;
+    transform: rotate(45deg);
+    flex-shrink: 0;
+    margin: -4px 3px 0 8px;
+}
+
+/* Dropdown Options */
+
+.mcb-dropdown-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    min-width: 0;
+    max-height: 220px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 0 0 7px 7px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.18);
+    z-index: 1000;
+    box-sizing: border-box;
+}
+
+.mcb-dropdown-option {
+    display: block;
+    width: 100%;
+    min-height: 38px;
+    padding: 9px 12px;
+    border: none;
+    background: #fff;
+    color: #333;
+    font-size: 13px;
+    text-align: center;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    cursor: pointer;
+    box-sizing: border-box;
+}
+
+.mcb-dropdown-option:hover,
+.mcb-option-active {
+    background: #253f94;
+    color: #fff;
+}
+
+.mcb-dropdown-empty {
+    padding: 12px;
+    font-size: 13px;
+    text-align: center;
+    color: #777;
+}
+
+.mcb-finder-button {
+    width: 100%;
+    border: none;
+    background: #253f94;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.3s ease;
+    border-radius: 0 11px 11px 0;
+}
+
+.mcb-finder-button:hover {
+    background: #172e78;
+}
+
+/* Mobile */
+
+@media (max-width: 480px) {
+
+    .mcb-school-finder {
+        position: absolute;
+        bottom: 20px;
+        top: auto;
+        left: 4%;
+        width: 92%;
+        padding: 12px;
+        box-sizing: border-box;
+        z-index: 20;
+    }
+
+    .mcb-finder-title {
+        font-size: 16px;
+        margin-bottom: 10px;
+        text-align: center;
+    }
+
+    .mcb-finder-form {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        min-height: auto;
+        gap: 0;
+        border-radius: 8px;
+        overflow: visible;
+    }
+
+    .mcb-finder-field {
+        width: 100%;
+        min-width: 0;
+        border-right: none;
+        border-bottom: 1px solid #ddd;
+    }
+
+    .mcb-dropdown {
+        width: 100%;
+    }
+
+    .mcb-dropdown-toggle {
+        width: 100%;
+        height: 44px;
+        padding: 0 12px;
+        font-size: 13px;
+    }
+
+    .mcb-dropdown-menu {
+        width: 100%;
+        max-width: 100%;
+        max-height: 160px;
+        border-radius: 0 0 6px 6px;
+    }
+
+    .mcb-dropdown-option {
+        min-height: 38px;
+        padding: 10px;
+        font-size: 13px;
+    }
+
+    .mcb-finder-button {
+        width: 100%;
+        height: 44px;
+        min-height: 44px;
+        border-radius: 0 0 8px 8px;
+    }
+
+    .mcb-dropdown-open {
+        z-index: 1001;
+    }
+
+}
+
+/* Tablet */
+
+@media (min-width: 481px) and (max-width: 768px) {
+
+    .mcb-school-finder {
+        bottom: 35px;
+        top: auto;
+    }
+
+    .mcb-finder-form {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .mcb-dropdown-toggle {
+        height: 50px;
+        padding: 0 8px;
+        font-size: 12px;
+    }
+
+    .mcb-finder-field {
+        min-width: 0;
+    }
+}

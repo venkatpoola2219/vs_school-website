@@ -1,0 +1,4 @@
+import React from "react";
+export default function Life() {
+  return <section id="life" className="life-section"><div className="container"><div className="row align-items-center g-4"><div className="col-lg-6"><span className="eyebrow light">BEYOND THE CLASSROOM</span><h2 className="section-title text-white">Big experiences.<br /><em>Brighter possibilities.</em></h2><p className="text-white-50">From sport and music to leadership and community projects, students find new ways to discover what they love.</p><a className="btn btn-gold rounded-pill px-4 mt-2" href="#contact">Explore student life <i className="bi bi-arrow-right ms-2"></i></a></div><div className="col-lg-6"><img className="life-image" src="https://images.unsplash.com/photo-1529390079861-591de354faf5?auto=format&fit=crop&w=1100&q=85" alt="Students enjoying an outdoor activity" /></div></div></div></section>;
+}
