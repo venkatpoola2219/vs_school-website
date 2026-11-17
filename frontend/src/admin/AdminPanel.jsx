@@ -104,6 +104,9 @@ export default function AdminPanel() {
   const [page, setPage] = useState(blankPage);
   const [menu, setMenu] = useState(blankMenu);
   const [pageMenu, setPageMenu] = useState(blankPageMenu);
+  const [enquiries, setEnquiries] = useState([]);
+  const [enquirySearch, setEnquirySearch] = useState('');
+  const [enquiriesLoading, setEnquiriesLoading] = useState(false);
   const [slugTouched, setSlugTouched] = useState(false);
 
   // Edit status
@@ -221,6 +224,36 @@ export default function AdminPanel() {
   }
 
   // Check existing login session
+  async function loadEnquiries() {
+    setEnquiriesLoading(true);
+    try {
+      const r = await api.get('/api/admin/enquiries', auth);
+      setEnquiries(r.data);
+    } catch (e) {
+      notify(e.response?.data?.message || 'Could not load enquiries.', true);
+    } finally {
+      setEnquiriesLoading(false);
+    }
+  }
+
+  function downloadEnquiriesCsv(rows) {
+    const cell = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    const head = ['Date', 'Parent name', 'Email', 'Phone', 'City', 'Grade', 'Message'];
+    const lines = rows.map(x => [
+      new Date(x.created_at).toLocaleString(), x.parent_name, x.email, x.phone, x.city, x.grade, x.message
+    ].map(cell).join(','));
+    const blob = new Blob(['\ufeff' + [head.map(cell).join(','), ...lines].join('\n')], { type: 'text/csv;charset=utf-8' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'enquiries.csv';
+    link.click();
+    URL.revokeObjectURL(link.href);
+  }
+
+  useEffect(() => {
+    if (tab === 'enquiries' && token) loadEnquiries();
+  }, [tab]);
+
   useEffect(() => {
 
     if (token) {
@@ -873,8 +906,15 @@ export default function AdminPanel() {
   // Sidebar tabs
   const parentOptions = [...new Set(menus.map(m => m.parent_label).filter(Boolean))];
 
+  const filteredEnquiries = enquiries.filter(x =>
+    `${x.parent_name} ${x.email} ${x.phone} ${x.city} ${x.grade} ${x.message}`
+      .toLowerCase()
+      .includes(enquirySearch.trim().toLowerCase())
+  );
+
   const tabs = [
     ['overview', 'Overview'],
+    ['enquiries', 'Enquiries'],
     ['settings', 'Logo & Settings'],
     ['banners', 'Banners'],
     ['pages', 'Pages'],
@@ -1571,6 +1611,87 @@ export default function AdminPanel() {
         )}
 
         {/* Menus */}
+        {tab === 'enquiries' && (
+
+          <section className="admin-card">
+
+            <h2>Admission enquiries ({enquiries.length})</h2>
+
+            <div className="admin-enquiry-tools">
+              <input
+                placeholder="Search name, phone, email, city..."
+                value={enquirySearch}
+                onChange={e => setEnquirySearch(e.target.value)}
+              />
+              <button type="button" onClick={loadEnquiries}>Refresh</button>
+              <button
+                type="button"
+                onClick={() => downloadEnquiriesCsv(filteredEnquiries)}
+                disabled={!filteredEnquiries.length}
+              >
+                Download Excel/CSV
+              </button>
+            </div>
+
+            {enquiriesLoading && <p>Loading enquiries...</p>}
+
+            {!enquiriesLoading && !filteredEnquiries.length && (
+              <p>No enquiries found.</p>
+            )}
+
+            {!!filteredEnquiries.length && (
+              <div className="admin-table-wrap">
+                <table className="admin-table">
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Parent name</th>
+                      <th>Phone</th>
+                      <th>Email</th>
+                      <th>City</th>
+                      <th>Grade</th>
+                      <th>Message</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredEnquiries.map(x => (
+                      <tr key={x.id}>
+                        <td>{new Date(x.created_at).toLocaleString()}</td>
+                        <td>{x.parent_name}</td>
+                        <td><a href={`tel:${x.phone}`}>{x.phone}</a></td>
+                        <td><a href={`mailto:${x.email}`}>{x.email}</a></td>
+                        <td>{x.city}</td>
+                        <td>{x.grade}</td>
+                        <td>{x.message}</td>
+                        <td>
+                          <button
+                            type="button"
+                            className="danger"
+                            onClick={async () => {
+                              if (!window.confirm('Delete this enquiry?')) return;
+                              try {
+                                await api.delete(`/api/admin/enquiries/${x.id}`, auth);
+                                setEnquiries(list => list.filter(item => item.id !== x.id));
+                              } catch (e) {
+                                notify('Could not delete enquiry.', true);
+                              }
+                            }}
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+          </section>
+
+        )}
+
         {tab === 'menus' && (
 
           <div className="admin-columns">

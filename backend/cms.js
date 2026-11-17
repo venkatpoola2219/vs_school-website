@@ -223,6 +223,22 @@ async function registerCms(app) {
     return { path: `/uploads/${filename}`, name: file.filename, isImage: IMAGE_EXT.has(ext), permanent: saved };
   });
 
+  // Admission enquiries submitted from the website form
+  app.get('/api/admin/enquiries', { preHandler: requireAdmin }, async () => {
+    const [rows] = await db.execute(
+      `SELECT id, parent_name, email, phone, city, grade, message, created_at
+         FROM admission_enquiries
+        ORDER BY created_at DESC, id DESC
+        LIMIT 2000`
+    );
+    return rows;
+  });
+
+  app.delete('/api/admin/enquiries/:id', { preHandler: requireAdmin }, async (request) => {
+    await db.execute('DELETE FROM admission_enquiries WHERE id = ?', [request.params.id]);
+    return { ok: true };
+  });
+
   app.get('/api/admin/banners', { preHandler: requireAdmin }, async () => {
     const [rows] = await db.execute('SELECT * FROM cms_banners ORDER BY sort_order, id'); return rows;
   });
