@@ -131,12 +131,12 @@ export default function AdminPanel() {
     };
 
     const [s, b, p, m, me, users] = await Promise.all([
-      api.get('/admin/settings', cfg),
-      api.get('/admin/banners', cfg),
-      api.get('/admin/pages', cfg),
-      api.get('/admin/menus', cfg),
-      api.get('/admin/me', cfg),
-      api.get('/admin/users', cfg)
+      api.get('/api/admin/settings', cfg),
+      api.get('/api/admin/banners', cfg),
+      api.get('/api/admin/pages', cfg),
+      api.get('/api/admin/menus', cfg),
+      api.get('/api/admin/me', cfg),
+      api.get('/api/admin/users', cfg)
     ]);
 
     let storedPages = p.data;
@@ -230,7 +230,7 @@ export default function AdminPanel() {
 
     try {
 
-      const r = await api.post('/admin/login', {
+      const r = await api.post('/api/admin/login', {
         username,
         password
       });
@@ -305,7 +305,7 @@ export default function AdminPanel() {
     try {
 
       const response = await api.put(
-        '/admin/password',
+        '/api/admin/password',
         {
           currentPassword: passwordForm.currentPassword,
           newPassword: passwordForm.newPassword
@@ -349,7 +349,7 @@ export default function AdminPanel() {
     try {
 
       await api.post(
-        '/admin/users',
+        '/api/admin/users',
         newAdmin,
         auth
       );
@@ -388,7 +388,7 @@ export default function AdminPanel() {
     try {
 
       const r = await api.post(
-        '/admin/upload',
+        '/api/admin/upload',
         data,
         {
           ...auth,
@@ -417,7 +417,7 @@ export default function AdminPanel() {
     try {
 
       await api.put(
-        '/admin/settings',
+        '/api/admin/settings',
         settings,
         auth
       );
@@ -451,7 +451,7 @@ export default function AdminPanel() {
       if (editing.type === 'banner' && editing.id) {
 
         await api.put(
-          `/admin/banners/${editing.id}`,
+          `/api/admin/banners/${editing.id}`,
           banner,
           auth
         );
@@ -459,7 +459,7 @@ export default function AdminPanel() {
       } else {
 
         await api.post(
-          '/admin/banners',
+          '/api/admin/banners',
           banner,
           auth
         );
@@ -502,7 +502,7 @@ export default function AdminPanel() {
       if (editing.type === 'page' && editing.id) {
 
         await api.put(
-          `/admin/pages/${editing.id}`,
+          `/api/admin/pages/${editing.id}`,
           page,
           auth
         );
@@ -510,7 +510,7 @@ export default function AdminPanel() {
       } else {
 
         await api.post(
-          '/admin/pages',
+          '/api/admin/pages',
           page,
           auth
         );
@@ -548,7 +548,7 @@ export default function AdminPanel() {
       if (editing.type === 'menu' && editing.id) {
 
         await api.put(
-          `/admin/menus/${editing.id}`,
+          `/api/admin/menus/${editing.id}`,
           menu,
           auth
         );
@@ -556,7 +556,7 @@ export default function AdminPanel() {
       } else {
 
         await api.post(
-          '/admin/menus',
+          '/api/admin/menus',
           menu,
           auth
         );
@@ -1774,7 +1774,7 @@ export default function AdminPanel() {
                         try {
 
                           await api.delete(
-                            `/admin/users/${x.id}`,
+                            `/api/admin/users/${x.id}`,
                             auth
                           );
 
