@@ -11,7 +11,7 @@ export default function Enquiry() {
     e.preventDefault();
     setStatus({ loading: true, text: "", error: false });
     try {
-      const response = await api.post("/enquiries", form);
+      const response = await api.post("/api/enquiries", form);
       setStatus({ loading: false, text: response.data.message, error: false });
       setForm({ parentName: "", email: "", phone: "", city: "", grade: "", message: "" });
     } catch (error) {
