@@ -45,3 +45,12 @@ CREATE TABLE IF NOT EXISTS cms_menus (
 
 INSERT IGNORE INTO site_settings (setting_key, setting_value) VALUES
 ('logo_path', ''), ('site_name', 'School Website');
+
+
+-- Permanent copy of uploaded logos / photos / files (created automatically by the server too)
+CREATE TABLE IF NOT EXISTS cms_files (
+  filename VARCHAR(200) NOT NULL PRIMARY KEY,
+  mime_type VARCHAR(120) NOT NULL,
+  data LONGBLOB NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

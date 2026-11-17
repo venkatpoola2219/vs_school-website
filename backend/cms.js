@@ -66,16 +66,50 @@ function requireAdmin(request, reply, done) {
   done();
 }
 
+// Render's free disk is wiped on every deploy, so every upload is also stored in
+// the database. If a file is missing on disk it is restored from the database.
+let filesTableReady = null;
+function ensureFilesTable() {
+  if (!filesTableReady) {
+    filesTableReady = db.execute(`
+      CREATE TABLE IF NOT EXISTS cms_files (
+        filename VARCHAR(200) NOT NULL PRIMARY KEY,
+        mime_type VARCHAR(120) NOT NULL,
+        data LONGBLOB NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `).catch(error => {
+      filesTableReady = null;
+      throw error;
+    });
+  }
+  return filesTableReady;
+}
+
 async function registerCms(app) {
   app.get('/uploads/:filename', async (request, reply) => {
     const filename = path.basename(request.params.filename);
     const file = path.join(uploadDir, filename);
-    if (!fs.existsSync(file)) return reply.code(404).send({ message: 'File not found.' });
     const ext = path.extname(filename).toLowerCase();
     reply.header('X-Content-Type-Options', 'nosniff');
     reply.header('Cache-Control', 'public, max-age=86400');
     reply.type(MIME_BY_EXT[ext] || 'application/octet-stream');
-    return reply.send(fs.createReadStream(file));
+
+    if (fs.existsSync(file)) return reply.send(fs.createReadStream(file));
+
+    // Not on disk (for example after a redeploy): restore it from the database
+    try {
+      await ensureFilesTable();
+      const [rows] = await db.execute('SELECT data FROM cms_files WHERE filename = ?', [filename]);
+      if (rows.length) {
+        const buffer = rows[0].data;
+        fs.writeFile(file, buffer, () => {});
+        return reply.send(buffer);
+      }
+    } catch (error) {
+      request.log.error(error, 'Could not read file from database');
+    }
+    return reply.code(404).type('application/json').send({ message: 'File not found.' });
   });
 
   app.post('/api/admin/login', async (request, reply) => {
@@ -172,7 +206,21 @@ async function registerCms(app) {
       fs.unlink(target, () => {});
       return reply.code(413).send({ message: `File is too large. Maximum size is ${MAX_UPLOAD_BYTES / 1024 / 1024} MB.` });
     }
-    return { path: `/uploads/${filename}`, name: file.filename, isImage: IMAGE_EXT.has(ext) };
+
+    // Keep a permanent copy in the database
+    let saved = true;
+    try {
+      await ensureFilesTable();
+      await db.execute(
+        'INSERT INTO cms_files (filename, mime_type, data) VALUES (?, ?, ?)',
+        [filename, MIME_BY_EXT[safeExt] || 'application/octet-stream', fs.readFileSync(target)]
+      );
+    } catch (error) {
+      saved = false;
+      request.log.error(error, 'Could not save uploaded file in the database');
+    }
+
+    return { path: `/uploads/${filename}`, name: file.filename, isImage: IMAGE_EXT.has(ext), permanent: saved };
   });
 
   app.get('/api/admin/banners', { preHandler: requireAdmin }, async () => {
