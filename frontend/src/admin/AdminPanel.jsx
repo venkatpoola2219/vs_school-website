@@ -4,6 +4,18 @@ import api from '../api';
 import './admin.css';
 import { defaultPages } from '../pages/WebsiteDetailPage';
 import { defaultMenuRecords } from '../components/defaultMenus';
+import RichTextEditor from '../components/RichTextEditor';
+
+const slugify = (text = '') =>
+  String(text).toLowerCase().trim().replace(/[^a-z0-9-]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+
+// Pages that came with the website keep their old address (/about/vision).
+// Every page you create yourself opens at /page/<slug>.
+const defaultRoutes = new Set(defaultPages.map(p => `${p.section}/${p.slug}`));
+const pageUrl = p =>
+  defaultRoutes.has(`${p.section}/${p.slug}`) ? `/${p.section}/${p.slug}` : `/page/${p.slug}`;
+
+const blankPageMenu = { show: true, parent: '', newParent: '', label: '' };
 
 const blankPage = {
   title: '',
@@ -91,6 +103,8 @@ export default function AdminPanel() {
   const [banner, setBanner] = useState(blankBanner);
   const [page, setPage] = useState(blankPage);
   const [menu, setMenu] = useState(blankMenu);
+  const [pageMenu, setPageMenu] = useState(blankPageMenu);
+  const [slugTouched, setSlugTouched] = useState(false);
 
   // Edit status
   const [editing, setEditing] = useState({
@@ -148,13 +162,13 @@ export default function AdminPanel() {
       for (const defaultPage of defaultPages) {
         if (existingSlugs.has(defaultPage.slug)) continue;
         try {
-          await api.post('/admin/pages', defaultPage, cfg);
+          await api.post('/api/admin/pages', defaultPage, cfg);
         } catch (seedError) {
           if (seedError.response?.status !== 409) throw seedError;
         }
       }
       try {
-        await api.post('/admin/pages', {
+        await api.post('/api/admin/pages', {
           title: 'System page setup marker',
           slug: seedMarker,
           section: 'system',
@@ -164,7 +178,7 @@ export default function AdminPanel() {
       } catch (seedError) {
         if (seedError.response?.status !== 409) throw seedError;
       }
-      const refreshed = await api.get('/admin/pages', cfg);
+      const refreshed = await api.get('/api/admin/pages', cfg);
       storedPages = refreshed.data;
     }
 
@@ -174,13 +188,13 @@ export default function AdminPanel() {
         const key = `${defaultMenu.parent_label}::${defaultMenu.label}`;
         if (existingMenuKeys.has(key)) continue;
         try {
-          await api.post('/admin/menus', defaultMenu, cfg);
+          await api.post('/api/admin/menus', defaultMenu, cfg);
         } catch (seedError) {
           if (seedError.response?.status !== 409) throw seedError;
         }
       }
       try {
-        await api.post('/admin/menus', {
+        await api.post('/api/admin/menus', {
           label: 'System menu setup marker',
           url: menuSeedMarker,
           parent_label: '__system__',
@@ -190,7 +204,7 @@ export default function AdminPanel() {
       } catch (seedError) {
         if (seedError.response?.status !== 409) throw seedError;
       }
-      const refreshedMenus = await api.get('/admin/menus', cfg);
+      const refreshedMenus = await api.get('/api/admin/menus', cfg);
       storedMenus = refreshedMenus.data;
     }
 
@@ -375,7 +389,8 @@ export default function AdminPanel() {
   }
 
   // Upload image
-  async function upload(file) {
+  // anyFile: allow PDF / Word / Excel too (page editor). full: return {path,name,isImage}
+  async function upload(file, { anyFile = false, full = false } = {}) {
 
     if (!file) return '';
 
@@ -388,7 +403,7 @@ export default function AdminPanel() {
     try {
 
       const r = await api.post(
-        '/api/admin/upload',
+        `/api/admin/upload${anyFile ? '' : '?kind=image'}`,
         data,
         {
           ...auth,
@@ -399,7 +414,7 @@ export default function AdminPanel() {
         }
       );
 
-      return r.data.path;
+      return full ? r.data : r.data.path;
 
     } finally {
 
@@ -497,34 +512,92 @@ export default function AdminPanel() {
     e.preventDefault();
     notify('');
 
+    const payload = {
+      ...page,
+      slug: slugify(page.slug || page.title),
+      section: slugify(page.section) || 'pages'
+    };
+
+    if (!payload.slug) {
+      notify('Enter a page title or URL slug.', true);
+      return;
+    }
+
+    const parent =
+      pageMenu.parent === '__new__' || !pageMenu.parent
+        ? pageMenu.newParent.trim()
+        : pageMenu.parent;
+
+    if (pageMenu.show && !parent) {
+      notify('Choose a header menu, or type a name for a new header menu.', true);
+      return;
+    }
+
     try {
 
       if (editing.type === 'page' && editing.id) {
-
-        await api.put(
-          `/api/admin/pages/${editing.id}`,
-          page,
-          auth
-        );
-
+        await api.put(`/api/admin/pages/${editing.id}`, payload, auth);
       } else {
+        await api.post('/api/admin/pages', payload, auth);
+      }
 
-        await api.post(
-          '/api/admin/pages',
-          page,
-          auth
-        );
+      // Header menu link for this page
+      const url = pageUrl(payload);
+      const existingMenu = menus.find(
+        m => m.url === url || (editing.oldUrl && m.url === editing.oldUrl)
+      );
+
+      if (pageMenu.show) {
+
+        const label = pageMenu.label.trim() || payload.title;
+
+        if (existingMenu) {
+
+          await api.put(`/api/admin/menus/${existingMenu.id}`, {
+            label,
+            url,
+            parent_label: parent,
+            sort_order: existingMenu.sort_order,
+            is_active: 1
+          }, auth);
+
+        } else {
+
+          const sameParent = menus.filter(m => m.parent_label === parent);
+          const nextOrder = sameParent.length
+            ? Math.max(...sameParent.map(m => Number(m.sort_order) || 0)) + 1
+            : 1;
+
+          await api.post('/api/admin/menus', {
+            label,
+            url,
+            parent_label: parent,
+            sort_order: nextOrder,
+            is_active: 1
+          }, auth);
+
+        }
+
+      } else if (existingMenu) {
+
+        await api.delete(`/api/admin/menus/${existingMenu.id}`, auth);
 
       }
 
       // Reset page form
       setPage(blankPage);
+      setPageMenu(blankPageMenu);
+      setSlugTouched(false);
 
       clearEditing();
 
       await loadAll();
 
-      notify('Page saved successfully!');
+      notify(
+        pageMenu.show
+          ? 'Page saved and shown in the header menu!'
+          : 'Page saved successfully!'
+      );
 
     } catch (e) {
 
@@ -596,8 +669,19 @@ export default function AdminPanel() {
 
     try {
 
+      if (type === 'pages') {
+        // also remove this page's link from the header menu
+        const target = pages.find(p => p.id === id);
+        if (target) {
+          const url = pageUrl(target);
+          for (const m of menus.filter(m => m.url === url)) {
+            await api.delete(`/api/admin/menus/${m.id}`, auth);
+          }
+        }
+      }
+
       await api.delete(
-        `/admin/${type}/${id}`,
+        `/api/admin/${type}/${id}`,
         auth
       );
 
@@ -652,9 +736,21 @@ export default function AdminPanel() {
       is_published: x.is_published
     });
 
+    const url = pageUrl(x);
+    const linked = menus.find(m => m.url === url);
+
+    setPageMenu(
+      linked
+        ? { show: true, parent: linked.parent_label, newParent: '', label: linked.label }
+        : { ...blankPageMenu, show: false }
+    );
+
+    setSlugTouched(true);
+
     setEditing({
       type: 'page',
-      id: x.id
+      id: x.id,
+      oldUrl: url
     });
 
     setTab('pages');
@@ -700,6 +796,8 @@ export default function AdminPanel() {
   function clearPageForm() {
 
     setPage(blankPage);
+    setPageMenu(blankPageMenu);
+    setSlugTouched(false);
 
     clearEditing();
     notify('');
@@ -773,6 +871,8 @@ export default function AdminPanel() {
   }
 
   // Sidebar tabs
+  const parentOptions = [...new Set(menus.map(m => m.parent_label).filter(Boolean))];
+
   const tabs = [
     ['overview', 'Overview'],
     ['settings', 'Logo & Settings'],
@@ -1250,28 +1350,31 @@ export default function AdminPanel() {
 
                   <input
                     value={page.title}
-                    onChange={e =>
+                    onChange={e => {
+                      const title = e.target.value;
                       setPage(prev => ({
                         ...prev,
-                        title: e.target.value
-                      }))
-                    }
+                        title,
+                        slug: slugTouched ? prev.slug : slugify(title)
+                      }));
+                    }}
                     required
                   />
 
                 </label>
 
                 <label>
-                  URL slug
+                  URL slug (page address)
 
                   <input
                     value={page.slug}
-                    onChange={e =>
+                    onChange={e => {
+                      setSlugTouched(true);
                       setPage(prev => ({
                         ...prev,
                         slug: e.target.value
-                      }))
-                    }
+                      }));
+                    }}
                     placeholder="school-life"
                     required
                   />
@@ -1279,7 +1382,7 @@ export default function AdminPanel() {
                 </label>
 
                 <label>
-                  Menu section
+                  Small heading above the title (optional)
 
                   <input
                     value={page.section}
@@ -1289,28 +1392,88 @@ export default function AdminPanel() {
                         section: e.target.value
                       }))
                     }
+                    placeholder="pages"
                   />
 
                 </label>
 
-                <label>
-                  Page content (edit or clear the content below)
+                <div className="admin-field">
+                  <span className="admin-field-label">Page content</span>
 
-                  <textarea
-                    rows="9"
+                  <RichTextEditor
+                    key={editing.id || 'new'}
                     value={page.content}
-                    onChange={e =>
-                      setPage(prev => ({
-                        ...prev,
-                        content: e.target.value
-                      }))
+                    onChange={content =>
+                      setPage(prev => ({ ...prev, content }))
                     }
-                    placeholder="Enter the complete content for this page. You can update or remove this text at any time."
+                    uploadFile={file => upload(file, { anyFile: true, full: true })}
+                    onError={text => notify(text, true)}
                   />
+                </div>
 
-                </label>
+                <div className="admin-menu-box">
 
-                <p className="admin-field-help">After saving, add a menu item under Menus with URL <b>/page/{page.slug || 'your-page-slug'}</b> to show this page in the website navigation.</p>
+                  <label className="admin-check">
+                    <input
+                      type="checkbox"
+                      checked={pageMenu.show}
+                      onChange={e =>
+                        setPageMenu(prev => ({ ...prev, show: e.target.checked }))
+                      }
+                    />
+                    Show this page in the website header menu
+                  </label>
+
+                  {pageMenu.show && (
+                    <>
+                      <label>
+                        Under which header menu?
+
+                        <select
+                          value={
+                            pageMenu.parent ||
+                            (parentOptions[0] ? parentOptions[0] : '__new__')
+                          }
+                          onChange={e =>
+                            setPageMenu(prev => ({ ...prev, parent: e.target.value }))
+                          }
+                        >
+                          {parentOptions.map(name => (
+                            <option key={name} value={name}>{name}</option>
+                          ))}
+                          <option value="__new__">➕ Create a new header menu…</option>
+                        </select>
+                      </label>
+
+                      {(pageMenu.parent === '__new__' || !parentOptions.length) && (
+                        <label>
+                          New header menu name
+
+                          <input
+                            value={pageMenu.newParent}
+                            onChange={e =>
+                              setPageMenu(prev => ({ ...prev, parent: '__new__', newParent: e.target.value }))
+                            }
+                            placeholder="Example: Admissions 2026"
+                          />
+                        </label>
+                      )}
+
+                      <label>
+                        Link text in the menu (optional)
+
+                        <input
+                          value={pageMenu.label}
+                          onChange={e =>
+                            setPageMenu(prev => ({ ...prev, label: e.target.value }))
+                          }
+                          placeholder={page.title || 'Same as page title'}
+                        />
+                      </label>
+                    </>
+                  )}
+
+                </div>
 
                 <label className="admin-check">
 
@@ -1462,6 +1625,7 @@ export default function AdminPanel() {
                   Parent menu
 
                   <input
+                    list="parent-menu-options"
                     value={menu.parent_label}
                     onChange={e =>
                       setMenu(prev => ({
@@ -1470,6 +1634,12 @@ export default function AdminPanel() {
                       }))
                     }
                   />
+
+                  <datalist id="parent-menu-options">
+                    {parentOptions.map(name => (
+                      <option key={name} value={name} />
+                    ))}
+                  </datalist>
 
                 </label>
 

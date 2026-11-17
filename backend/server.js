@@ -9,7 +9,10 @@ const app = Fastify({ logger: true });
 
 async function start() {
   await app.register(cors, {
-    origin: process.env.FRONTEND_ORIGIN || "http://localhost:5173"
+    origin: process.env.FRONTEND_ORIGIN || "http://localhost:5173",
+    // PUT and DELETE are needed by the admin panel (edit / delete). The cors
+    // plugin only allows GET, HEAD and POST unless methods are listed.
+    methods: ["GET", "HEAD", "POST", "PUT", "DELETE", "OPTIONS"]
   });
   await app.register(multipart);
   await registerCms(app);

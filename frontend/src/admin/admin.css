@@ -507,3 +507,25 @@
     align-items: flex-start;
   }
 }
+
+/* ---------- Page content editor ---------- */
+.rte { border: 1px solid #d9e0ec; border-radius: 10px; background: #fff; overflow: hidden; margin-top: 6px }
+.rte-tabs { display: flex; align-items: center; gap: 4px; background: #f2f5fb; padding: 6px 8px 0; border-bottom: 1px solid #d9e0ec }
+.rte-tabs button { border: 0; background: transparent; padding: 8px 14px; border-radius: 8px 8px 0 0; cursor: pointer; color: #5a6882; font-weight: 600; font-size: 13px }
+.rte-tabs button.active { background: #fff; color: #24468f; box-shadow: 0 -1px 0 #d9e0ec inset }
+.rte-busy { margin-left: auto; font-size: 12px; color: #e56b0a; font-weight: 600 }
+.rte-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 8px; border-bottom: 1px solid #e8edf4; background: #fff }
+.rte-btn { border: 1px solid #d9e0ec; background: #fff; border-radius: 6px; padding: 5px 10px; font-size: 13px; cursor: pointer; color: #26364c; min-width: 32px }
+.rte-btn:hover:not(:disabled) { border-color: #24468f; color: #24468f; background: #f2f5fb }
+.rte-btn:disabled { opacity: .5; cursor: wait }
+.rte-select { border: 1px solid #d9e0ec; border-radius: 6px; padding: 5px 6px; font-size: 13px; background: #fff }
+.rte-sep { width: 1px; height: 22px; background: #d9e0ec; margin: 0 4px }
+.rte-area { min-height: 280px; max-height: 560px; overflow: auto; padding: 16px; outline: none }
+.rte-area:empty:before { content: attr(data-placeholder); color: #98a3b8 }
+.rte-code { width: 100%; min-height: 320px; border: 0; padding: 14px; font-family: Consolas, Menlo, monospace; font-size: 13px; line-height: 1.55; resize: vertical; outline: none; display: block; background: #0f1b33; color: #d7e3ff }
+.rte-help { margin: 0; padding: 8px 12px; font-size: 12px; color: #778198; background: #f8f9fc; border-top: 1px solid #e8edf4 }
+.admin-form select { width: 100%; padding: 11px; border: 1px solid #d9e0ec; border-radius: 8px; background: #fff; font-size: 14px }
+
+.admin-field { display: flex; flex-direction: column; gap: 4px }
+.admin-field-label { font-weight: 600; color: #26364c; font-size: 14px }
+.admin-menu-box { border: 1px dashed #b9c6e0; background: #f8faff; border-radius: 10px; padding: 12px 14px; display: flex; flex-direction: column; gap: 10px }

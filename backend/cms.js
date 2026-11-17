@@ -6,6 +6,20 @@ const db = require('./db');
 
 const uploadDir = path.join(__dirname, 'uploads');
 fs.mkdirSync(uploadDir, { recursive: true });
+const MAX_UPLOAD_BYTES = 15 * 1024 * 1024; // 15 MB
+const IMAGE_EXT = new Set(['.jpg', '.jpeg', '.png', '.webp', '.gif']);
+const DOC_EXT = new Set(['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.txt', '.csv']);
+const ALLOWED_EXT = new Set([...IMAGE_EXT, ...DOC_EXT]);
+const MIME_BY_EXT = {
+  '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp', '.gif': 'image/gif',
+  '.pdf': 'application/pdf', '.txt': 'text/plain; charset=utf-8', '.csv': 'text/csv; charset=utf-8',
+  '.doc': 'application/msword',
+  '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  '.xls': 'application/vnd.ms-excel',
+  '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  '.ppt': 'application/vnd.ms-powerpoint',
+  '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+};
 const b64 = value => Buffer.from(value).toString('base64url');
 const sign = payload => {
   const secret = process.env.ADMIN_TOKEN_SECRET;
@@ -56,10 +70,11 @@ async function registerCms(app) {
   app.get('/uploads/:filename', async (request, reply) => {
     const filename = path.basename(request.params.filename);
     const file = path.join(uploadDir, filename);
-    if (!fs.existsSync(file)) return reply.code(404).send({ message: 'Image not found.' });
+    if (!fs.existsSync(file)) return reply.code(404).send({ message: 'File not found.' });
     const ext = path.extname(filename).toLowerCase();
-    const types = { '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp', '.gif': 'image/gif' };
-    reply.type(types[ext] || 'application/octet-stream');
+    reply.header('X-Content-Type-Options', 'nosniff');
+    reply.header('Cache-Control', 'public, max-age=86400');
+    reply.type(MIME_BY_EXT[ext] || 'application/octet-stream');
     return reply.send(fs.createReadStream(file));
   });
 
@@ -133,15 +148,31 @@ async function registerCms(app) {
     return { message: 'Settings saved.' };
   });
 
+  // Upload an image (logo, banner, photo inside a page) or a document (PDF, Word, Excel...).
+  // POST /api/admin/upload?kind=image  -> images only (logo, banners)
+  // POST /api/admin/upload             -> images and documents (page editor)
   app.post('/api/admin/upload', { preHandler: requireAdmin }, async (request, reply) => {
-    const file = await request.file({ limits: { fileSize: 5 * 1024 * 1024 } });
-    if (!file) return reply.code(400).send({ message: 'Choose an image file.' });
-    const allowed = { 'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp', 'image/gif': '.gif' };
-    const ext = allowed[file.mimetype];
-    if (!ext) return reply.code(400).send({ message: 'Only JPG, PNG, WEBP and GIF images are allowed.' });
-    const filename = `${Date.now()}-${crypto.randomBytes(6).toString('hex')}${ext}`;
-    await pipeline(file.file, fs.createWriteStream(path.join(uploadDir, filename)));
-    return { path: `/uploads/${filename}` };
+    const imagesOnly = request.query?.kind === 'image';
+    const file = await request.file({ limits: { fileSize: MAX_UPLOAD_BYTES } });
+    if (!file) return reply.code(400).send({ message: 'Choose a file.' });
+    const ext = path.extname(file.filename || '').toLowerCase();
+    const allowedExt = imagesOnly ? IMAGE_EXT : ALLOWED_EXT;
+    if (!allowedExt.has(ext)) {
+      return reply.code(400).send({
+        message: imagesOnly
+          ? 'Only JPG, PNG, WEBP and GIF images are allowed.'
+          : 'Allowed files: JPG, PNG, WEBP, GIF, PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX, TXT, CSV.'
+      });
+    }
+    const safeExt = ext === '.jpeg' ? '.jpg' : ext;
+    const filename = `${Date.now()}-${crypto.randomBytes(6).toString('hex')}${safeExt}`;
+    const target = path.join(uploadDir, filename);
+    await pipeline(file.file, fs.createWriteStream(target));
+    if (file.file.truncated) {
+      fs.unlink(target, () => {});
+      return reply.code(413).send({ message: `File is too large. Maximum size is ${MAX_UPLOAD_BYTES / 1024 / 1024} MB.` });
+    }
+    return { path: `/uploads/${filename}`, name: file.filename, isImage: IMAGE_EXT.has(ext) };
   });
 
   app.get('/api/admin/banners', { preHandler: requireAdmin }, async () => {

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import api from "../api";
 import Enquiry from "../sections/Enquiry";
+import CmsContent from "../components/CmsContent";
 
 // Each URL has its own page content. These pages are rendered inside the
 // shared website shell, so navigation stays within the React SPA.
@@ -233,7 +234,7 @@ export default function WebsiteDetailPage() {
     setLoading(true);
     setNotFound(false);
     setPage(null);
-    api.get(`/pages/${encodeURIComponent(slug)}`)
+    api.get(`/api/pages/${encodeURIComponent(slug)}`)
       .then(({ data }) => {
         if (active) setPage(data);
       })
@@ -247,13 +248,13 @@ export default function WebsiteDetailPage() {
   }, [section, slug]);
 
   const routeKey = `${section}/${slug}`;
-  const pageTemplate = pageData[routeKey];
+  const pageTemplate = pageData[routeKey] || {};
 
   if (loading) {
     return <section className="page-section"><div className="section-inner"><p>Loading page...</p></div></section>;
   }
 
-  if (notFound || !page || !pageTemplate) {
+  if (notFound || !page) {
     return (
       <section className="page-section">
         <div className="section-inner">
@@ -279,9 +280,9 @@ export default function WebsiteDetailPage() {
       </div>
       <section className={`page-section ${pageTemplate.muted ? "section-muted" : ""}`}>
         <div className="section-inner">
-          <small className="section-eyebrow">{pageTemplate.eyebrow}</small>
+          <small className="section-eyebrow">{pageTemplate.eyebrow || String(page.section || "").toUpperCase()}</small>
           <h1>{page.title}</h1>
-          <div className="section-intro" style={{ whiteSpace: "pre-wrap", maxWidth: 900 }}>{page.content}</div>
+          <CmsContent html={page.content} style={{ maxWidth: 900 }} />
         </div>
       </section>
     </>
