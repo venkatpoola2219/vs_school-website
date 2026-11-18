@@ -5,6 +5,29 @@ import './admin.css';
 import { defaultPages } from '../pages/WebsiteDetailPage';
 import { defaultMenuRecords } from '../components/defaultMenus';
 import RichTextEditor from '../components/RichTextEditor';
+import siteImages from '../config/siteImages';
+import { assetUrl } from '../utils/siteData';
+
+// The two banners that were built into the website are copied into the admin
+// panel once, so they can be re-ordered, edited or deleted like any other banner.
+let bannerSeeding = null;
+async function seedDefaultBanners(cfg) {
+  if (!bannerSeeding) {
+    bannerSeeding = (async () => {
+      for (const [index, url] of siteImages.heroSlides.entries()) {
+        await api.post('/api/admin/banners', {
+          title: `Home banner ${index + 1}`,
+          image_path: url,
+          link_url: '',
+          sort_order: index + 1,
+          is_active: 1
+        }, cfg);
+      }
+      await api.put('/api/admin/settings', { default_banners_seeded: '1' }, cfg);
+    })().finally(() => { bannerSeeding = null; });
+  }
+  return bannerSeeding;
+}
 
 const slugify = (text = '') =>
   String(text).toLowerCase().trim().replace(/[^a-z0-9-]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
@@ -216,7 +239,17 @@ export default function AdminPanel() {
       ...s.data
     }));
 
-    setBanners(b.data);
+    let storedBanners = b.data;
+    if (s.data.default_banners_seeded !== '1') {
+      try {
+        await seedDefaultBanners(cfg);
+        storedBanners = (await api.get('/api/admin/banners', cfg)).data;
+      } catch (seedError) {
+        console.error('Could not add the starter banners', seedError);
+      }
+    }
+
+    setBanners(storedBanners);
     setPages(storedPages.filter(item => item.slug !== seedMarker));
     setMenus(storedMenus.filter(item => item.url !== menuSeedMarker));
     setCurrentAdmin(me.data);
@@ -494,6 +527,11 @@ export default function AdminPanel() {
     e.preventDefault();
     notify('');
 
+    if (!banner.image_path) {
+      notify('Please choose a banner photo to upload.', true);
+      return;
+    }
+
     try {
 
       if (editing.type === 'banner' && editing.id) {
@@ -506,9 +544,17 @@ export default function AdminPanel() {
 
       } else {
 
+        // Display order left empty / 0 -> show after the last banner
+        const lastOrder = banners.length
+          ? Math.max(...banners.map(x => Number(x.sort_order) || 0))
+          : 0;
+
         await api.post(
           '/api/admin/banners',
-          banner,
+          {
+            ...banner,
+            sort_order: Number(banner.sort_order) > 0 ? banner.sort_order : lastOrder + 1
+          },
           auth
         );
 
@@ -717,6 +763,13 @@ export default function AdminPanel() {
         `/api/admin/${type}/${id}`,
         auth
       );
+
+      if (editing.id === id && editing.type === type.replace(/s$/, '')) {
+        if (type === 'banners') clearBannerForm();
+        else if (type === 'pages') clearPageForm();
+        else if (type === 'menus') setMenu(blankMenu);
+        clearEditing();
+      }
 
       await loadAll();
 
@@ -1182,25 +1235,17 @@ export default function AdminPanel() {
 
                 </label>
 
-                <label>
-                  Banner image URL
+                <div className="admin-field">
 
-                  <input
-                    value={banner.image_path}
-                    onChange={e =>
-                      setBanner(prev => ({
-                        ...prev,
-                        image_path: e.target.value
-                      }))
-                    }
-                    placeholder="Upload an image below or paste image path"
-                    required
-                  />
+                  <span className="admin-field-label">Banner photo</span>
 
-                </label>
-
-                <label>
-                  Upload image
+                  {banner.image_path && (
+                    <img
+                      className="banner-preview"
+                      src={assetUrl(banner.image_path)}
+                      alt="Banner preview"
+                    />
+                  )}
 
                   <input
                     ref={bannerInputRef}
@@ -1238,25 +1283,32 @@ export default function AdminPanel() {
                     }}
                   />
 
-                </label>
+                  <small className="admin-hint">
+                    {uploading
+                      ? 'Uploading photo...'
+                      : 'Choose a photo from your computer. Best size: 1920 × 700.'}
+                  </small>
+
+                </div>
 
                 <label>
-                  Link URL
+                  Or paste an image link (optional)
 
                   <input
-                    value={banner.link_url}
+                    value={banner.image_path}
                     onChange={e =>
                       setBanner(prev => ({
                         ...prev,
-                        link_url: e.target.value
+                        image_path: e.target.value
                       }))
                     }
+                    placeholder="Only if the photo is already online"
                   />
 
                 </label>
 
                 <label>
-                  Display order
+                  Display order (1 shows first, leave 0 to add at the end)
 
                   <input
                     type="number"
@@ -1325,11 +1377,7 @@ export default function AdminPanel() {
                 >
 
                   <img
-                    src={
-                      x.image_path.startsWith('http')
-                        ? x.image_path
-                        : `${api.defaults.baseURL.replace('/api', '')}${x.image_path}`
-                    }
+                    src={assetUrl(x.image_path)}
                     alt={x.title || 'Banner'}
                   />
 

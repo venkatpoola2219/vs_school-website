@@ -176,7 +176,7 @@ async function registerCms(app) {
     return Object.fromEntries(rows.map(x => [x.setting_key, x.setting_value]));
   });
   app.put('/api/admin/settings', { preHandler: requireAdmin }, async (request, reply) => {
-    const allowed = ['logo_path', 'site_name'];
+    const allowed = ['logo_path', 'site_name', 'default_banners_seeded'];
     const entries = Object.entries(request.body || {}).filter(([key, value]) => allowed.includes(key) && typeof value === 'string');
     for (const [key, value] of entries) await db.execute('INSERT INTO site_settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)', [key, value]);
     return { message: 'Settings saved.' };

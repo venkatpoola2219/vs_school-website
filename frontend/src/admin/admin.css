@@ -542,3 +542,6 @@
 .admin-table td:first-child { white-space: nowrap }
 .admin-table .danger { border: 1px solid #d33; color: #d33; background: #fff; border-radius: 6px; padding: 4px 10px; cursor: pointer }
 .admin-table .danger:hover { background: #d33; color: #fff }
+
+.banner-preview { width: 100%; max-height: 150px; object-fit: cover; border-radius: 8px; border: 1px solid #d9e0ec; margin-bottom: 8px }
+.admin-hint { color: #778198; font-size: 12px; margin-top: 4px; display: block }
