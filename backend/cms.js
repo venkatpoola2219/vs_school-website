@@ -86,6 +86,63 @@ function ensureFilesTable() {
   return filesTableReady;
 }
 
+// ---------- School pages ----------
+// Each school keeps its page design + content in cms_school_profiles.
+// (The existing boards / cities / schools tables are not changed.)
+const SCHOOL_TEMPLATES = ['classic', 'modern', 'elegant', 'bold'];
+let profilesTableReady = null;
+function ensureProfilesTable() {
+  if (!profilesTableReady) {
+    profilesTableReady = db.execute(`
+      CREATE TABLE IF NOT EXISTS cms_school_profiles (
+        school_id INT NOT NULL PRIMARY KEY,
+        template VARCHAR(30) NOT NULL DEFAULT 'classic',
+        data LONGTEXT NULL,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      )
+    `).catch(error => {
+      profilesTableReady = null;
+      throw error;
+    });
+  }
+  return profilesTableReady;
+}
+
+const slugify = text =>
+  String(text || '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+
+// Find a board / city by id, or by name (created if it does not exist yet)
+async function resolveLookup(table, input = {}) {
+  if (!['boards', 'cities'].includes(table)) throw new Error('Invalid table');
+  if (input.id) {
+    const [rows] = await db.execute(`SELECT id FROM ${table} WHERE id = ?`, [input.id]);
+    if (rows.length) return rows[0].id;
+  }
+  const name = String(input.name || '').trim();
+  if (!name) return null;
+  const slug = slugify(name);
+  if (!slug) return null;
+  const [rows] = await db.execute(`SELECT id FROM ${table} WHERE slug = ? OR name = ?`, [slug, name]);
+  if (rows.length) return rows[0].id;
+  const [result] = await db.execute(`INSERT INTO ${table} (name, slug) VALUES (?, ?)`, [name, slug]);
+  return result.insertId;
+}
+
+async function saveProfile(schoolId, template, data) {
+  await ensureProfilesTable();
+  const safeTemplate = SCHOOL_TEMPLATES.includes(template) ? template : 'classic';
+  const json = JSON.stringify(data && typeof data === 'object' ? data : {});
+  await db.execute(
+    `INSERT INTO cms_school_profiles (school_id, template, data) VALUES (?, ?, ?)
+     ON DUPLICATE KEY UPDATE template = VALUES(template), data = VALUES(data)`,
+    [schoolId, safeTemplate, json]
+  );
+}
+
+const parseJson = text => {
+  try { return JSON.parse(text || '{}') || {}; } catch { return {}; }
+};
+
 async function registerCms(app) {
   app.get('/uploads/:filename', async (request, reply) => {
     const filename = path.basename(request.params.filename);
@@ -221,6 +278,84 @@ async function registerCms(app) {
     }
 
     return { path: `/uploads/${filename}`, name: file.filename, isImage: IMAGE_EXT.has(ext), permanent: saved };
+  });
+
+  // ---------- School pages (admin) ----------
+  app.get('/api/admin/schools', { preHandler: requireAdmin }, async () => {
+    await ensureProfilesTable();
+    const [schools] = await db.execute(
+      `SELECT s.id, s.name, s.slug, b.id AS board_id, b.name AS board, b.slug AS board_slug,
+              c.id AS city_id, c.name AS city, c.slug AS city_slug, p.template, p.data
+         FROM schools s
+         JOIN boards b ON b.id = s.board_id
+         JOIN cities c ON c.id = s.city_id
+         LEFT JOIN cms_school_profiles p ON p.school_id = s.id
+        ORDER BY b.name, c.name, s.name`
+    );
+    const [boards] = await db.execute('SELECT id, name, slug FROM boards ORDER BY name');
+    const [cities] = await db.execute('SELECT id, name, slug FROM cities ORDER BY name');
+    return {
+      schools: schools.map(({ data, template, ...school }) => ({
+        ...school,
+        template: SCHOOL_TEMPLATES.includes(template) ? template : 'classic',
+        data: parseJson(data)
+      })),
+      boards,
+      cities
+    };
+  });
+
+  async function writeSchool(request, reply, schoolId) {
+    const { name, slug, board, city, template, data } = request.body || {};
+    const cleanName = String(name || '').trim();
+    const cleanSlug = slugify(slug || cleanName);
+    if (!cleanName || !cleanSlug) return reply.code(400).send({ message: 'Enter the school name.' });
+
+    const boardId = await resolveLookup('boards', board);
+    if (!boardId) return reply.code(400).send({ message: 'Choose a board or type a new board name.' });
+    const cityId = await resolveLookup('cities', city);
+    if (!cityId) return reply.code(400).send({ message: 'Choose a city or type a new city name.' });
+
+    if (JSON.stringify(data || {}).length > 800000) {
+      return reply.code(413).send({ message: 'This page has too much content. Remove some text or photos.' });
+    }
+
+    try {
+      let id = schoolId;
+      if (schoolId) {
+        await db.execute(
+          'UPDATE schools SET name = ?, slug = ?, board_id = ?, city_id = ? WHERE id = ?',
+          [cleanName, cleanSlug, boardId, cityId, schoolId]
+        );
+      } else {
+        const [result] = await db.execute(
+          "INSERT INTO schools (name, slug, url, board_id, city_id) VALUES (?, ?, '', ?, ?)",
+          [cleanName, cleanSlug, boardId, cityId]
+        );
+        id = result.insertId;
+      }
+      await saveProfile(id, template, data);
+      if (!schoolId) reply.code(201);
+      return { id, message: 'School saved.' };
+    } catch (error) {
+      if (error.code === 'ER_DUP_ENTRY') {
+        return reply.code(409).send({ message: 'A school with this name already exists in that board and city.' });
+      }
+      throw error;
+    }
+  }
+
+  app.post('/api/admin/schools', { preHandler: requireAdmin }, (request, reply) =>
+    writeSchool(request, reply, null)
+  );
+  app.put('/api/admin/schools/:id', { preHandler: requireAdmin }, (request, reply) =>
+    writeSchool(request, reply, Number(request.params.id))
+  );
+  app.delete('/api/admin/schools/:id', { preHandler: requireAdmin }, async request => {
+    await ensureProfilesTable();
+    await db.execute('DELETE FROM cms_school_profiles WHERE school_id = ?', [request.params.id]);
+    await db.execute('DELETE FROM schools WHERE id = ?', [request.params.id]);
+    return { message: 'School deleted.' };
   });
 
   // Admission enquiries submitted from the website form

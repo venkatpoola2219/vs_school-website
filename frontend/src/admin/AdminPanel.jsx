@@ -5,6 +5,7 @@ import './admin.css';
 import { defaultPages } from '../pages/WebsiteDetailPage';
 import { defaultMenuRecords } from '../components/defaultMenus';
 import RichTextEditor from '../components/RichTextEditor';
+import SchoolsManager from './SchoolsManager';
 import siteImages from '../config/siteImages';
 import { assetUrl } from '../utils/siteData';
 
@@ -971,6 +972,7 @@ export default function AdminPanel() {
     ['settings', 'Logo & Settings'],
     ['banners', 'Banners'],
     ['pages', 'Pages'],
+    ['schools', 'Schools'],
     ['menus', 'Menus'],
     ['profile', 'My Account'],
     ['admins', 'Admin Users']
@@ -1738,6 +1740,10 @@ export default function AdminPanel() {
 
           </section>
 
+        )}
+
+        {tab === 'schools' && (
+          <SchoolsManager auth={auth} upload={upload} notify={notify} />
         )}
 
         {tab === 'menus' && (

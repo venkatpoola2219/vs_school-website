@@ -88,7 +88,7 @@ async function start() {
 
     try {
       const [rows] = await db.execute(
-        `SELECT s.name, s.slug, s.url, b.name AS board, c.name AS city
+        `SELECT s.id, s.name, s.slug, b.name AS board, c.name AS city
            FROM schools s
            JOIN boards b ON b.id = s.board_id
            JOIN cities c ON c.id = s.city_id
@@ -98,7 +98,23 @@ async function start() {
       if (rows.length === 0) {
         return reply.code(404).send({ message: "School not found." });
       }
-      return rows[0];
+
+      // Design + content written in the admin panel (null = show the default page)
+      let profile = null;
+      try {
+        const [profiles] = await db.execute(
+          "SELECT template, data FROM cms_school_profiles WHERE school_id = ?",
+          [rows[0].id]
+        );
+        if (profiles.length) {
+          profile = { template: profiles[0].template, data: JSON.parse(profiles[0].data || "{}") };
+        }
+      } catch (profileError) {
+        request.log.warn(profileError, "School profile not available");
+      }
+
+      const { id, ...schoolInfo } = rows[0];
+      return { ...schoolInfo, profile };
     } catch (error) {
       request.log.error(error);
       return reply.code(500).send({ message: "Unable to load school." });
