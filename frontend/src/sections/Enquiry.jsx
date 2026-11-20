@@ -1,26 +1,41 @@
 import React from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import api from "../api";
 
 
 export default function Enquiry() {
-  const [form, setForm] = useState({ parentName: "", email: "", phone: "", city: "", grade: "", message: "" });
+  // Opened from a school page: /admissions/enquire?school=Name&board=CBSE&city=Hyderabad
+  const [params] = useSearchParams();
+  const schoolName = (params.get("school") || "").trim();
+  const schoolBoard = (params.get("board") || "").trim();
+  const schoolCity = (params.get("city") || "").trim();
+  const schoolLabel = schoolName
+    ? `${schoolName}${schoolBoard || schoolCity ? ` (${[schoolBoard, schoolCity].filter(Boolean).join(", ")})` : ""}`
+    : "";
+
+  const [form, setForm] = useState({ parentName: "", email: "", phone: "", city: schoolCity, grade: "", message: "" });
   const [status, setStatus] = useState({ loading: false, text: "", error: false });
+  // a different school was chosen: fill the city again
+  useEffect(() => {
+    setForm(f => ({ ...f, city: schoolCity || f.city }));
+  }, [schoolCity, schoolName]);
   const update = e => setForm({ ...form, [e.target.name]: e.target.value });
   async function submit(e) {
     e.preventDefault();
     setStatus({ loading: true, text: "", error: false });
     try {
-      const response = await api.post("/api/enquiries", form);
+      const response = await api.post("/api/enquiries", { ...form, schoolName: schoolLabel });
       setStatus({ loading: false, text: response.data.message, error: false });
-      setForm({ parentName: "", email: "", phone: "", city: "", grade: "", message: "" });
+      setForm({ parentName: "", email: "", phone: "", city: schoolCity, grade: "", message: "" });
     } catch (error) {
       const message = error.response?.data?.message || "Could not connect to the server. Check that Fastify and MySQL are running.";
       setStatus({ loading: false, text: message, error: true });
     }
   }
-  return <section id="contact" className="section-pad enquiry-section"><div className="container"><div className="row g-5"><div className="col-lg-5"><span className="eyebrow">TAKE THE FIRST STEP</span><h2 className="section-title">Let's shape their <em>tomorrow.</em></h2><p className="body-copy">Tell us a little about your family and our admissions team will help you explore the next steps.</p><div className="contact-detail"><i className="bi bi-telephone"></i><div><small>CALL ADMISSIONS</small><strong>+91 80000 00000</strong></div></div><div className="contact-detail"><i className="bi bi-envelope"></i><div><small>EMAIL US</small><strong>admissions@example.edu</strong></div></div></div>
+  return <section id="contact" className="section-pad enquiry-section"><div className="container"><div className="row g-5"><div className="col-lg-5">{schoolName ? <><span className="eyebrow">ENQUIRY FOR</span><h2 className="section-title">{schoolName}</h2><p className="body-copy">{[schoolBoard, schoolCity].filter(Boolean).join(" · ")}<br />Tell us a little about your family and the admissions team of this school will get back to you.</p><p className="body-copy"><Link to="/admissions/enquire">Enquire for a different school</Link></p></> : <><span className="eyebrow">TAKE THE FIRST STEP</span><h2 className="section-title">Let's shape their <em>tomorrow.</em></h2><p className="body-copy">Tell us a little about your family and our admissions team will help you explore the next steps.</p></>}<div className="contact-detail"><i className="bi bi-telephone"></i><div><small>CALL ADMISSIONS</small><strong>+91 80000 00000</strong></div></div><div className="contact-detail"><i className="bi bi-envelope"></i><div><small>EMAIL US</small><strong>admissions@example.edu</strong></div></div></div>
     <div className="col-lg-7"><form className="enquiry-form" onSubmit={submit}><h3>Admission enquiry</h3><p>Fields marked * are required.</p><div className="row g-3">
+      {schoolName && <div className="col-12"><label className="form-label">School</label><input className="form-control" value={schoolLabel} readOnly style={{ background: "#f3f6fa", fontWeight: 600 }} /></div>}
       <div className="col-md-6"><label className="form-label">Parent / Guardian name *</label><input className="form-control" name="parentName" value={form.parentName} onChange={update} required maxLength="120" placeholder="Your full name" /></div>
       <div className="col-md-6"><label className="form-label">Email address *</label><input className="form-control" type="email" name="email" value={form.email} onChange={update} required placeholder="name@example.com" /></div>
       <div className="col-md-6"><label className="form-label">Phone number *</label><input className="form-control" type="tel" name="phone" value={form.phone} onChange={update} required maxLength="30" placeholder="+91" /></div>

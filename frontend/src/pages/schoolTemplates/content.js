@@ -1,4 +1,5 @@
 import { assetUrl } from "../../utils/siteData";
+import { enquiryUrl } from "../../utils/currentSchool";
 
 // The designs a school page can use. Choose one for each school in Admin -> Schools.
 export const SCHOOL_TEMPLATES = [
@@ -58,6 +59,7 @@ export function buildSchoolContent(school) {
     name,
     board,
     city,
+    enquireUrl: enquiryUrl({ name, board, city }),
     tagline: d.tagline || "A place where every child belongs",
     intro:
       d.intro ||

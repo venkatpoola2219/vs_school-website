@@ -3,6 +3,7 @@ const path = require('node:path');
 const fs = require('node:fs');
 const { pipeline } = require('node:stream/promises');
 const db = require('./db');
+const { hasSchoolColumn } = require('./enquiry-school');
 
 const uploadDir = path.join(__dirname, 'uploads');
 fs.mkdirSync(uploadDir, { recursive: true });
@@ -360,8 +361,9 @@ async function registerCms(app) {
 
   // Admission enquiries submitted from the website form
   app.get('/api/admin/enquiries', { preHandler: requireAdmin }, async () => {
+    const withSchool = await hasSchoolColumn();
     const [rows] = await db.execute(
-      `SELECT id, parent_name, email, phone, city, grade, message, created_at
+      `SELECT id, parent_name, email, phone, city, grade, message, ${withSchool ? 'school_name' : 'NULL AS school_name'}, created_at
          FROM admission_enquiries
         ORDER BY created_at DESC, id DESC
         LIMIT 2000`

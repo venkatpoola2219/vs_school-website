@@ -18,7 +18,7 @@ export default function ClassicTemplate({ c }) {
           <h1>{c.name}</h1>
           <p>{c.intro}</p>
           <div className="school-hero-actions">
-            <Link className="school-btn school-btn-primary" to="/admissions/enquire">Enquire Now</Link>
+            <Link className="school-btn school-btn-primary" to={c.enquireUrl}>Enquire Now</Link>
             <a className="school-btn school-btn-ghost" href="#school-contact">Contact School</a>
           </div>
         </div>
@@ -62,7 +62,7 @@ export default function ClassicTemplate({ c }) {
             <small className="school-eyebrow">PHOTO GALLERY</small>
             <h2>Life at {c.name}</h2>
             <div className="school-gallery">
-              {c.gallery.map((src, i) => (<img key={i} src={src} alt={`${c.name} photo ${i + 1}`} loading="lazy" />))}
+              {c.gallery.map((src, i) => (<a key={i} href={src} target="_blank" rel="noreferrer"><img src={src} alt={`${c.name} photo ${i + 1}`} loading="lazy" /></a>))}
             </div>
           </div>
         </section>
@@ -95,7 +95,7 @@ export default function ClassicTemplate({ c }) {
           <div className="school-cta">
             <h3>Admissions are open</h3>
             <p>Share your details and our admissions team will call you back.</p>
-            <Link className="school-btn school-btn-primary" to="/admissions/enquire">Enquire Now</Link>
+            <Link className="school-btn school-btn-primary" to={c.enquireUrl}>Enquire Now</Link>
           </div>
         </div>
       </section>

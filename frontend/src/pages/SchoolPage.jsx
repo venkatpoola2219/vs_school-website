@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import api from "../api";
+import { setCurrentSchool } from "../utils/currentSchool";
 import { buildSchoolContent } from "./schoolTemplates/content";
 import ClassicTemplate from "./schoolTemplates/ClassicTemplate";
 import ModernTemplate from "./schoolTemplates/ModernTemplate";
@@ -41,6 +42,13 @@ export default function SchoolPage() {
       active = false;
     };
   }, [board, city, school]);
+
+  // While this school page is open, every "Enquire Now" link carries the school name
+  useEffect(() => {
+    if (!data) return undefined;
+    setCurrentSchool({ name: data.name, board: data.board, city: data.city });
+    return () => setCurrentSchool(null);
+  }, [data]);
 
   if (loading) {
     return (

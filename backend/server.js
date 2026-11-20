@@ -4,6 +4,7 @@ const cors = require("@fastify/cors");
 const multipart = require("@fastify/multipart");
 const db = require("./db");
 const { registerCms, ensureAdmin } = require("./cms");
+const { hasSchoolColumn } = require("./enquiry-school");
 
 const app = Fastify({ logger: true });
 
@@ -124,7 +125,7 @@ async function start() {
   /* ---------- Enquiries (your existing code) ---------- */
 
   app.post("/api/enquiries", async (request, reply) => {
-    const { parentName, email, phone, city, grade, message = "" } = request.body || {};
+    const { parentName, email, phone, city, grade, message = "", schoolName = "" } = request.body || {};
     if (![parentName, email, phone, city, grade].every(v => typeof v === "string" && v.trim())) {
       return reply.code(400).send({ message: "Please complete all required fields." });
     }
@@ -133,12 +134,34 @@ async function start() {
     }
 
     try {
-      const [result] = await db.execute(
-        `INSERT INTO admission_enquiries
-         (parent_name, email, phone, city, grade, message)
-         VALUES (?, ?, ?, ?, ?, ?)`,
-        [parentName.trim(), email.trim(), phone.trim(), city.trim(), grade.trim(), String(message).trim()]
-      );
+      // School the enquiry was made for (opened from a school page)
+      const school = typeof schoolName === "string" ? schoolName.trim().slice(0, 250) : "";
+      const text = String(message).trim();
+      let result;
+
+      if (school && !(await hasSchoolColumn())) {
+        // column could not be added: keep the school name at the start of the message
+        [result] = await db.execute(
+          `INSERT INTO admission_enquiries
+           (parent_name, email, phone, city, grade, message)
+           VALUES (?, ?, ?, ?, ?, ?)`,
+          [parentName.trim(), email.trim(), phone.trim(), city.trim(), grade.trim(), `School: ${school}${text ? `\n${text}` : ""}`]
+        );
+      } else if (school) {
+        [result] = await db.execute(
+          `INSERT INTO admission_enquiries
+           (parent_name, email, phone, city, grade, message, school_name)
+           VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          [parentName.trim(), email.trim(), phone.trim(), city.trim(), grade.trim(), text, school]
+        );
+      } else {
+        [result] = await db.execute(
+          `INSERT INTO admission_enquiries
+           (parent_name, email, phone, city, grade, message)
+           VALUES (?, ?, ?, ?, ?, ?)`,
+          [parentName.trim(), email.trim(), phone.trim(), city.trim(), grade.trim(), text]
+        );
+      }
       return reply.code(201).send({ message: "Enquiry submitted successfully.", id: result.insertId });
     } catch (error) {
       request.log.error(error);

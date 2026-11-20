@@ -19,7 +19,7 @@ export default function ModernTemplate({ c }) {
           <p className="sm-tagline">{c.tagline}</p>
           <p className="sm-intro">{c.intro}</p>
           <div className="sm-actions">
-            <Link className="sm-btn sm-btn-solid" to="/admissions/enquire">Apply for admission</Link>
+            <Link className="sm-btn sm-btn-solid" to={c.enquireUrl}>Apply for admission</Link>
             <a className="sm-btn sm-btn-line" href="#sm-contact">Get in touch</a>
           </div>
         </div>
@@ -66,7 +66,7 @@ export default function ModernTemplate({ c }) {
             <span className="sm-kicker">Gallery</span>
             <h2>Moments from our campus</h2>
             <div className="sm-gallery">
-              {photos.map((src, i) => (<img key={i} src={src} alt={`${c.name} photo ${i + 1}`} loading="lazy" />))}
+              {photos.map((src, i) => (<a key={i} href={src} target="_blank" rel="noreferrer"><img src={src} alt={`${c.name} photo ${i + 1}`} loading="lazy" /></a>))}
             </div>
           </div>
         </section>
@@ -99,7 +99,7 @@ export default function ModernTemplate({ c }) {
           <div className="sm-cta">
             <h3>Admissions open</h3>
             <p>Tell us about your child and we will call you back.</p>
-            <Link className="sm-btn sm-btn-solid" to="/admissions/enquire">Enquire now</Link>
+            <Link className="sm-btn sm-btn-solid" to={c.enquireUrl}>Enquire now</Link>
           </div>
         </div>
       </section>

@@ -14,7 +14,7 @@ export default function ElegantTemplate({ c }) {
           <p className="se-tagline">{c.tagline}</p>
           <p className="se-intro">{c.intro}</p>
           <div className="se-actions">
-            <Link className="se-btn se-btn-fill" to="/admissions/enquire">Enquire now</Link>
+            <Link className="se-btn se-btn-fill" to={c.enquireUrl}>Enquire now</Link>
             <a className="se-btn se-btn-line" href="#se-contact">Contact</a>
           </div>
         </div>
@@ -65,7 +65,7 @@ export default function ElegantTemplate({ c }) {
               <div className="se-rule"><span></span></div>
             </div>
             <div className="se-gallery">
-              {c.gallery.map((src, i) => (<img key={i} src={src} alt={`${c.name} photo ${i + 1}`} loading="lazy" />))}
+              {c.gallery.map((src, i) => (<a key={i} href={src} target="_blank" rel="noreferrer"><img src={src} alt={`${c.name} photo ${i + 1}`} loading="lazy" /></a>))}
             </div>
           </div>
         </section>
@@ -93,7 +93,7 @@ export default function ElegantTemplate({ c }) {
           <p>{c.contact.address}</p>
           <p>{c.contact.phone} &nbsp;•&nbsp; {c.contact.email}</p>
           <p>{c.contact.hours}</p>
-          <Link className="se-btn se-btn-gold" to="/admissions/enquire">Enquire now</Link>
+          <Link className="se-btn se-btn-gold" to={c.enquireUrl}>Enquire now</Link>
         </div>
       </section>
     </div>

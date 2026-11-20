@@ -272,9 +272,9 @@ export default function AdminPanel() {
 
   function downloadEnquiriesCsv(rows) {
     const cell = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
-    const head = ['Date', 'Parent name', 'Email', 'Phone', 'City', 'Grade', 'Message'];
+    const head = ['Date', 'School', 'Parent name', 'Email', 'Phone', 'City', 'Grade', 'Message'];
     const lines = rows.map(x => [
-      new Date(x.created_at).toLocaleString(), x.parent_name, x.email, x.phone, x.city, x.grade, x.message
+      new Date(x.created_at).toLocaleString(), x.school_name, x.parent_name, x.email, x.phone, x.city, x.grade, x.message
     ].map(cell).join(','));
     const blob = new Blob(['\ufeff' + [head.map(cell).join(','), ...lines].join('\n')], { type: 'text/csv;charset=utf-8' });
     const link = document.createElement('a');
@@ -961,7 +961,7 @@ export default function AdminPanel() {
   const parentOptions = [...new Set(menus.map(m => m.parent_label).filter(Boolean))];
 
   const filteredEnquiries = enquiries.filter(x =>
-    `${x.parent_name} ${x.email} ${x.phone} ${x.city} ${x.grade} ${x.message}`
+    `${x.parent_name} ${x.email} ${x.phone} ${x.city} ${x.grade} ${x.message} ${x.school_name || ''}`
       .toLowerCase()
       .includes(enquirySearch.trim().toLowerCase())
   );
@@ -1695,6 +1695,7 @@ export default function AdminPanel() {
                   <thead>
                     <tr>
                       <th>Date</th>
+                      <th>School</th>
                       <th>Parent name</th>
                       <th>Phone</th>
                       <th>Email</th>
@@ -1708,6 +1709,7 @@ export default function AdminPanel() {
                     {filteredEnquiries.map(x => (
                       <tr key={x.id}>
                         <td>{new Date(x.created_at).toLocaleString()}</td>
+                        <td>{x.school_name || '—'}</td>
                         <td>{x.parent_name}</td>
                         <td><a href={`tel:${x.phone}`}>{x.phone}</a></td>
                         <td><a href={`mailto:${x.email}`}>{x.email}</a></td>

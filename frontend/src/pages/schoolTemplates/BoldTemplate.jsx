@@ -16,7 +16,7 @@ export default function BoldTemplate({ c }) {
             <p className="sb-tagline">{c.tagline}</p>
             <p className="sb-intro">{c.intro}</p>
             <div className="sb-actions">
-              <Link className="sb-btn sb-btn-yellow" to="/admissions/enquire">Enquire now →</Link>
+              <Link className="sb-btn sb-btn-yellow" to={c.enquireUrl}>Enquire now →</Link>
               <a className="sb-btn sb-btn-ghost" href="#sb-contact">Contact</a>
             </div>
           </div>
@@ -64,7 +64,7 @@ export default function BoldTemplate({ c }) {
             <span className="sb-tag">Gallery</span>
             <h2>On campus</h2>
             <div className="sb-gallery">
-              {c.gallery.map((src, i) => (<img key={i} src={src} alt={`${c.name} photo ${i + 1}`} loading="lazy" />))}
+              {c.gallery.map((src, i) => (<a key={i} href={src} target="_blank" rel="noreferrer"><img src={src} alt={`${c.name} photo ${i + 1}`} loading="lazy" /></a>))}
             </div>
           </div>
         </section>
@@ -93,7 +93,7 @@ export default function BoldTemplate({ c }) {
               <li><i className="bi bi-clock-fill"></i>{c.contact.hours}</li>
             </ul>
           </div>
-          <Link className="sb-btn sb-btn-dark" to="/admissions/enquire">Enquire now →</Link>
+          <Link className="sb-btn sb-btn-dark" to={c.enquireUrl}>Enquire now →</Link>
         </div>
       </section>
     </div>

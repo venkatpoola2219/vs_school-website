@@ -3,6 +3,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import siteImages from "../config/siteImages";
 import { Link, useLocation } from "react-router-dom";
 import { useSiteData, assetUrl } from "../utils/siteData";
+import { useCurrentSchool, enquiryUrl, ENQUIRY_PATH } from "../utils/currentSchool";
 import { defaultNavItems } from "./defaultMenus";
 
 
@@ -19,6 +20,7 @@ export default function Navbar() {
     const [active, setActive] = useState("");
     const [scrolled, setScrolled] = useState(false);
     const { data, ready } = useSiteData();
+    const currentSchool = useCurrentSchool();
 
     // Show the admin logo. Until we know it, show nothing (not the old default logo).
     const logo = data?.settings?.logo_path
@@ -101,7 +103,7 @@ export default function Navbar() {
                             {links.map(([text, path]) => (
                                 <Link
                                     key={text}
-                                    to={path}
+                                    to={path === ENQUIRY_PATH ? enquiryUrl(currentSchool) : path}
                                     onClick={() => {
                                         setMobile(false);
                                         setActive("");
